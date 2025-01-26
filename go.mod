@@ -1,4 +1,4 @@
-module tg-mux
+module github.com/te5se/tg-mux
 
 go 1.23.3
 

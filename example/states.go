@@ -3,5 +3,6 @@ package main
 type State int
 
 const (
-	StateNone = "none"
+	State_None  = "none"
+	State_Start = "start"
 )

@@ -1,16 +1,15 @@
 package main
 
-import (
-	"github.com/patrickmn/go-cache"
-)
+import "github.com/patrickmn/go-cache"
 
 type UserStore struct {
 	cache *cache.Cache
 }
 
 type User struct {
-	TGID  string
-	State string
+	TGID     string
+	State    string
+	Username string
 }
 
 func NewUserStore() *UserStore {
@@ -30,4 +29,8 @@ func (store *UserStore) Get(tgID string) (*User, bool) {
 
 func (store *UserStore) Store(user *User) {
 	store.cache.Set(user.TGID, user, -1)
+}
+
+func (store *UserStore) Remove(tgID string) {
+	store.cache.Delete(tgID)
 }

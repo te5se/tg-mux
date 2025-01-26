@@ -52,7 +52,7 @@ type stateHandler struct {
 	Cleanup func(tgCtx *TGContext) error
 }
 
-type tgRouter struct {
+type TGRouter struct {
 	tgKey           string
 	bot             *tgbotapi.BotAPI
 	commandHandlers map[string]func(ctx *TGContext) (tgbotapi.MessageConfig, error)
@@ -65,8 +65,8 @@ type tgRouter struct {
 // userStateGetter should return a string function if user and state can be identified
 // empty state string and empty error if user isn't registered yet
 // and error if there was an "internal server error"
-func NewTGRouter(bot *tgbotapi.BotAPI, userStateGetter func(context *TGContext) (string, error)) (*tgRouter, error) {
-	var router = tgRouter{
+func NewTGRouter(bot *tgbotapi.BotAPI, userStateGetter func(context *TGContext) (string, error)) (*TGRouter, error) {
+	var router = TGRouter{
 		commandHandlers: make(map[string]func(ctx *TGContext) (tgbotapi.MessageConfig, error)),
 		stateHandlers:   make(map[string]stateHandler),
 		userStateGetter: userStateGetter,
@@ -75,28 +75,26 @@ func NewTGRouter(bot *tgbotapi.BotAPI, userStateGetter func(context *TGContext) 
 
 	return &router, nil
 }
-func (router *tgRouter) Start(ctx context.Context) {
+func (router *TGRouter) Run(ctx context.Context) {
 	router.ctx = ctx
-	router.queueManager = newQueueManager(router.ProcessUpdate, ctx)
+	router.queueManager = newQueueManager(router.processUpdate, ctx)
 
-	go func() {
-		router.ProcessUpdates()
-	}()
+	router.processUpdates()
 }
 
-func (router *tgRouter) RegisterCommand(name string, handleFunc func(ctx *TGContext) (tgbotapi.MessageConfig, error)) {
+func (router *TGRouter) RegisterCommand(name string, handleFunc func(ctx *TGContext) (tgbotapi.MessageConfig, error)) {
 	router.commandHandlers[name] = handleFunc
 }
 
 // cleanupFunc allows to roll back changes if your flow was interrupted by another command
-func (router *tgRouter) RegisterStateHandler(state string, handleFunc func(ctx *TGContext) (tgbotapi.MessageConfig, error), cleanupFunc func(tgCtx *TGContext) error) {
+func (router *TGRouter) RegisterStateHandler(state string, handleFunc func(ctx *TGContext) (tgbotapi.MessageConfig, error), cleanupFunc func(tgCtx *TGContext) error) {
 	router.stateHandlers[state] = stateHandler{
 		Handler: handleFunc,
 		Cleanup: cleanupFunc,
 	}
 }
 
-func (router *tgRouter) ProcessUpdates() {
+func (router *TGRouter) processUpdates() {
 	u := tgbotapi.NewUpdate(0)
 	u.Timeout = 60
 
@@ -114,7 +112,7 @@ func (router *tgRouter) ProcessUpdates() {
 	}
 }
 
-func (router *tgRouter) ProcessUpdate(update tgbotapi.Update) {
+func (router *TGRouter) processUpdate(update tgbotapi.Update) {
 	defer func() {
 		if r := recover(); r != nil {
 			stackSize := 1024 * 8
@@ -143,23 +141,25 @@ func (router *tgRouter) ProcessUpdate(update tgbotapi.Update) {
 		router.handleError(err, "while getting user from repository", update)
 		return
 	}
-	shouldGoOn := router.HandleNonExistentUsers(update)
+	shouldGoOn := router.handleNonExistentUsers(update)
 	if !shouldGoOn {
 		return
 	}
 
 	if update.Message.Command() != "" {
 		// Unfinished state cleanup before command execution
-		cleanupHandler, ok := router.stateHandlers[state]
-		if !ok {
-			router.handleError(fmt.Errorf("handler %v isn't registered", state), "", update)
-			return
-		}
+		if state != "" {
+			cleanupHandler, ok := router.stateHandlers[state]
+			if !ok {
+				router.handleError(fmt.Errorf("handler %v isn't registered", state), "", update)
+				return
+			}
 
-		err := cleanupHandler.Cleanup(buildTGContext(update.Message))
-		if err != nil {
-			router.handleError(err, "while handling cleanup", update)
-			return
+			err := cleanupHandler.Cleanup(buildTGContext(update.Message))
+			if err != nil {
+				router.handleError(err, "while handling cleanup", update)
+				return
+			}
 		}
 
 		// Command handling
@@ -196,7 +196,7 @@ func (router *tgRouter) ProcessUpdate(update tgbotapi.Update) {
 	return
 }
 
-func (router *tgRouter) HandleNonExistentUsers(update tgbotapi.Update) (shouldContinue bool) {
+func (router *TGRouter) handleNonExistentUsers(update tgbotapi.Update) (shouldContinue bool) {
 	state, err := router.userStateGetter(buildTGContext(update.Message))
 	if err != nil {
 		router.handleError(err, "while getting state from repository", update)
@@ -216,14 +216,14 @@ func (router *tgRouter) HandleNonExistentUsers(update tgbotapi.Update) (shouldCo
 	return true
 }
 
-func (router *tgRouter) SendWithLogErr(message *tgbotapi.MessageConfig) {
+func (router *TGRouter) sendWithLogErr(message *tgbotapi.MessageConfig) {
 	_, err := router.bot.Send(message)
 	if err != nil {
 		log.Err(err).Msg("while sending msg to TG")
 	}
 }
 
-func (router *tgRouter) handleError(err error, errMessage string, update tgbotapi.Update) {
+func (router *TGRouter) handleError(err error, errMessage string, update tgbotapi.Update) {
 	log.Err(err).Msg(errMessage)
 
 	msg := tgbotapi.NewMessage(update.Message.Chat.ID, "TODO: error text")

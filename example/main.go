@@ -1,10 +1,12 @@
 package main
 
 import (
+	"context"
 	"fmt"
 	"log"
 	"os"
-	router "tg-mux"
+
+	router "github.com/te5se/tg-mux"
 
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
 )
@@ -30,8 +32,15 @@ func main() {
 
 		return user.State, nil
 	})
-
 	if err != nil {
 		log.Fatal(err)
 	}
+
+	startHandler := NewStartHandler(userStore)
+	startHandler.Register(router)
+
+	noneHandler := NewNoneHandler()
+	noneHandler.Register(router)
+
+	router.Run(context.Background())
 }
