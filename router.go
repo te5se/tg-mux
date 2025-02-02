@@ -1,4 +1,4 @@
-package router
+package tgmux
 
 import (
 	"context"
@@ -60,6 +60,7 @@ type TGRouter struct {
 	userStateGetter func(context *TGContext) (string, error)
 	queueManager    *queueManager
 	ctx             context.Context
+	localization    Localization
 }
 
 // userStateGetter should return a string function if user and state can be identified
@@ -71,6 +72,7 @@ func NewTGRouter(bot *tgbotapi.BotAPI, userStateGetter func(context *TGContext) 
 		stateHandlers:   make(map[string]stateHandler),
 		userStateGetter: userStateGetter,
 		bot:             bot,
+		localization:    defaultLocalization,
 	}
 
 	return &router, nil
@@ -80,6 +82,10 @@ func (router *TGRouter) Run(ctx context.Context) {
 	router.queueManager = newQueueManager(router.processUpdate, ctx)
 
 	router.processUpdates()
+}
+
+func (router *TGRouter) ConfigureMessages(localization Localization) {
+	router.localization = localization
 }
 
 func (router *TGRouter) RegisterCommand(name string, handleFunc func(ctx *TGContext) (tgbotapi.MessageConfig, error)) {
@@ -165,7 +171,7 @@ func (router *TGRouter) processUpdate(update tgbotapi.Update) {
 		// Command handling
 		commandHandler, ok := router.commandHandlers[update.Message.Command()]
 		if !ok {
-			msg := tgbotapi.NewMessage(update.Message.Chat.ID, "command isn't registered")
+			msg := tgbotapi.NewMessage(update.Message.Chat.ID, router.localization.CommandNotFound)
 			router.bot.Send(msg)
 			return
 		}
@@ -203,7 +209,7 @@ func (router *TGRouter) handleNonExistentUsers(update tgbotapi.Update) (shouldCo
 		return false
 	}
 	if state == "" && update.Message.Command() != "start" && update.Message.Command() != "help" {
-		msg := tgbotapi.NewMessage(update.Message.Chat.ID, "Для того, чтобы начать пользоваться ботом, выберите /start")
+		msg := tgbotapi.NewMessage(update.Message.Chat.ID, router.localization.UseStartToRegister)
 		_, err = router.bot.Send(msg)
 		if err != nil {
 			log.Err(err).Msg("while sending msg to TG")
@@ -226,7 +232,7 @@ func (router *TGRouter) sendWithLogErr(message *tgbotapi.MessageConfig) {
 func (router *TGRouter) handleError(err error, errMessage string, update tgbotapi.Update) {
 	log.Err(err).Msg(errMessage)
 
-	msg := tgbotapi.NewMessage(update.Message.Chat.ID, "TODO: error text")
+	msg := tgbotapi.NewMessage(update.Message.Chat.ID, router.localization.OnError)
 	_, err = router.bot.Send(msg)
 
 	log.Err(err).Msg("while handling error")

@@ -1,4 +1,4 @@
-package router
+package tgmux
 
 import (
 	"context"

@@ -42,5 +42,11 @@ func main() {
 	noneHandler := NewNoneHandler()
 	noneHandler.Register(router)
 
+	helpHandler := NewHelpHandler()
+	helpHandler.Register(router)
+
+	whoamiHandler := NewWhoamiHandler(userStore)
+	whoamiHandler.Register(router)
+
 	router.Run(context.Background())
 }
