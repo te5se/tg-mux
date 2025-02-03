@@ -208,7 +208,7 @@ func (router *TGRouter) handleNonExistentUsers(update tgbotapi.Update) (shouldCo
 		router.handleError(err, "while getting state from repository", update)
 		return false
 	}
-	if state == "" && update.Message.Command() != "start" && update.Message.Command() != "help" {
+	if state == "" && update.Message.Command() != "start" {
 		msg := tgbotapi.NewMessage(update.Message.Chat.ID, router.localization.UseStartToRegister)
 		_, err = router.bot.Send(msg)
 		if err != nil {

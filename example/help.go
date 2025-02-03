@@ -13,13 +13,9 @@ func NewHelpHandler() *HelpHandler {
 }
 
 func (h *HelpHandler) Register(router *tgmux.TGRouter) {
-	router.RegisterStateHandler(State_None, h.HandleState, h.Cleanup)
+	router.RegisterCommand(State_Help, h.HandleState)
 }
 
 func (h *HelpHandler) HandleState(ctx *tgmux.TGContext) (tgbotapi.MessageConfig, error) {
 	return tgbotapi.NewMessage(ctx.Message.Chat.ID, "Hi! Since that is the test bot, there is just one command available: /whoami."), nil
-}
-
-func (h *HelpHandler) Cleanup(tgCtx *tgmux.TGContext) error {
-	return nil
 }

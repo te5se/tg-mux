@@ -9,5 +9,5 @@ type Localization struct {
 var defaultLocalization = Localization{
 	OnError:            "Error occured on the server. Support is notified",
 	CommandNotFound:    "Command isn't supported",
-	UseStartToRegister: "To use the bot, press /start",
+	UseStartToRegister: "To use the bot, enter /start",
 }
