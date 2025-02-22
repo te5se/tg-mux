@@ -3,44 +3,16 @@ package tgmux
 import (
 	"context"
 	"fmt"
-	"net/http"
 	"runtime"
 
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
 	"github.com/rs/zerolog/log"
 )
 
-// https://github.com/golang/mock
 type BotAPI interface {
-	CopyMessage(config tgbotapi.CopyMessageConfig) (tgbotapi.MessageID, error)
-	GetChat(config tgbotapi.ChatInfoConfig) (tgbotapi.Chat, error)
-	GetChatAdministrators(config tgbotapi.ChatAdministratorsConfig) ([]tgbotapi.ChatMember, error)
-	GetChatMember(config tgbotapi.GetChatMemberConfig) (tgbotapi.ChatMember, error)
-	GetChatMembersCount(config tgbotapi.ChatMemberCountConfig) (int, error)
-	GetFile(config tgbotapi.FileConfig) (tgbotapi.File, error)
-	GetFileDirectURL(fileID string) (string, error)
-	GetGameHighScores(config tgbotapi.GetGameHighScoresConfig) ([]tgbotapi.GameHighScore, error)
-	GetInviteLink(config tgbotapi.ChatInviteLinkConfig) (string, error)
-	GetMe() (tgbotapi.User, error)
-	GetMyCommands() ([]tgbotapi.BotCommand, error)
-	GetMyCommandsWithConfig(config tgbotapi.GetMyCommandsConfig) ([]tgbotapi.BotCommand, error)
-	GetStickerSet(config tgbotapi.GetStickerSetConfig) (tgbotapi.StickerSet, error)
-	GetUpdates(config tgbotapi.UpdateConfig) ([]tgbotapi.Update, error)
 	GetUpdatesChan(config tgbotapi.UpdateConfig) tgbotapi.UpdatesChannel
-	GetUserProfilePhotos(config tgbotapi.UserProfilePhotosConfig) (tgbotapi.UserProfilePhotos, error)
-	GetWebhookInfo() (tgbotapi.WebhookInfo, error)
-	HandleUpdate(r *http.Request) (*tgbotapi.Update, error)
-	IsMessageToMe(message tgbotapi.Message) bool
-	ListenForWebhook(pattern string) tgbotapi.UpdatesChannel
-	ListenForWebhookRespReqFormat(w http.ResponseWriter, r *http.Request) tgbotapi.UpdatesChannel
-	MakeRequest(endpoint string, params tgbotapi.Params) (*tgbotapi.APIResponse, error)
-	Request(c tgbotapi.Chattable) (*tgbotapi.APIResponse, error)
 	Send(c tgbotapi.Chattable) (tgbotapi.Message, error)
-	SendMediaGroup(config tgbotapi.MediaGroupConfig) ([]tgbotapi.Message, error)
-	SetAPIEndpoint(apiEndpoint string)
-	StopPoll(config tgbotapi.StopPollConfig) (tgbotapi.Poll, error)
 	StopReceivingUpdates()
-	UploadFiles(endpoint string, params tgbotapi.Params, files []tgbotapi.RequestFile) (*tgbotapi.APIResponse, error)
 }
 
 type TGContext struct {
@@ -54,7 +26,7 @@ type stateHandler struct {
 
 type TGRouter struct {
 	tgKey           string
-	bot             *tgbotapi.BotAPI
+	bot             BotAPI
 	commandHandlers map[string]func(ctx *TGContext) (tgbotapi.MessageConfig, error)
 	stateHandlers   map[string]stateHandler
 	userStateGetter func(context *TGContext) (string, error)
@@ -66,7 +38,7 @@ type TGRouter struct {
 // userStateGetter should return a string function if user and state can be identified
 // empty state string and empty error if user isn't registered yet
 // and error if there was an "internal server error"
-func NewTGRouter(bot *tgbotapi.BotAPI, userStateGetter func(context *TGContext) (string, error)) (*TGRouter, error) {
+func NewTGRouter(bot BotAPI, userStateGetter func(context *TGContext) (string, error)) (*TGRouter, error) {
 	var router = TGRouter{
 		commandHandlers: make(map[string]func(ctx *TGContext) (tgbotapi.MessageConfig, error)),
 		stateHandlers:   make(map[string]stateHandler),
