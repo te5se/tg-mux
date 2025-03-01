@@ -5,6 +5,10 @@ import (
 	tgmux "github.com/te5se/tg-mux"
 )
 
+const (
+	HelpPrompt = "Use /help command to see what you can do here"
+)
+
 type NoneHandler struct {
 }
 
@@ -17,7 +21,7 @@ func (h *NoneHandler) Register(router *tgmux.TGRouter) {
 }
 
 func (h *NoneHandler) HandleState(ctx *tgmux.TGContext) (tgbotapi.MessageConfig, error) {
-	return tgbotapi.NewMessage(ctx.Message.Chat.ID, "Use /help command to see what you can do here"), nil
+	return tgbotapi.NewMessage(ctx.Message.Chat.ID, HelpPrompt), nil
 }
 
 func (h *NoneHandler) Cleanup(tgCtx *tgmux.TGContext) error {
